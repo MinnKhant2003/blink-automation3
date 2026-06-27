@@ -162,12 +162,8 @@ app.post('/api/process', async (req, res) => {
     await new Promise(r => setTimeout(r, 3000));
     const script = "ဒါကတော့ ဇာတ်လမ်းအကျဉ်းချုပ်ပါ။ ဒီနေရာမှာ စိတ်ဝင်စားစရာတွေ အများကြီးပါဝင်ပါတယ်။";
     
-    // Simulate Smart Trim
-    log('[3/4] Smart Trimming Video via fluent-ffmpeg (removing silence)...');
-    await new Promise(r => setTimeout(r, 4000));
-    
-    // Simulate Voice Sync
-    log('[4/4] Generating Tuned Voiceover & Syncing...');
+    // Smart Trim & Voice Gen
+    log('[3/4] Generating Tuned Voiceover...');
     const config = VOICES[voiceName as keyof typeof VOICES] || VOICES['Myint Myat'];
     const tts = new EdgeTTS({
       voice: config.voice,
@@ -177,11 +173,42 @@ app.post('/api/process', async (req, res) => {
     const audioPath = path.join(TMP_DIR, `voice_${uuidv4()}.mp3`);
     await tts.ttsPromise(script, audioPath);
     
-    // Simulate final video output by copying the input video to outputs dir
+    log('[4/4] Smart Trimming & Syncing via FFmpeg...');
     const inputPath = path.join(UPLOADS_DIR, filename);
     const outputFilename = `final_${uuidv4()}.mp4`;
     const finalOutputPath = path.join(OUTPUTS_DIR, outputFilename);
-    fs.copyFileSync(inputPath, finalOutputPath);
+
+    await new Promise((resolve, reject) => {
+      ffmpeg()
+        .input(inputPath)
+        .input(audioPath)
+        .complexFilter([
+          '[0:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-30dB[trimmed_orig_a]',
+          '[1:a]volume=1.5[voice_a]',
+          '[trimmed_orig_a][voice_a]amix=inputs=2:duration=first:dropout_transition=2[audio_out]',
+          '[0:v]fps=30,format=yuv420p[video_out]'
+        ])
+        .outputOptions([
+          '-map [video_out]',
+          '-map [audio_out]',
+          '-c:v libx264',
+          '-preset ultrafast',
+          '-crf 28',
+          '-c:a aac',
+          '-b:a 128k',
+          '-shortest'
+        ])
+        .save(finalOutputPath)
+        .on('start', (cmdline) => log(`FFmpeg started...`))
+        .on('end', () => {
+           log('FFmpeg processing complete.');
+           resolve(true);
+        })
+        .on('error', (err) => {
+           log(`FFmpeg error: ${err.message}`);
+           reject(err);
+        });
+    });
     
     // Upload to Catbox.moe for public access (avoids Cloudflare HTML blocks)
     log('Process Complete. Uploading to temporary host for download...');
