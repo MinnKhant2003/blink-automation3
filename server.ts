@@ -186,16 +186,17 @@ app.post('/api/process', async (req, res) => {
           '[0:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-30dB[trimmed_orig_a]',
           '[1:a]volume=1.5[voice_a]',
           '[trimmed_orig_a][voice_a]amix=inputs=2:duration=first:dropout_transition=2[audio_out]',
-          '[0:v]fps=30,format=yuv420p[video_out]'
+          '[0:v]scale=-2:480,fps=24,format=yuv420p[video_out]'
         ])
         .outputOptions([
           '-map [video_out]',
           '-map [audio_out]',
           '-c:v libx264',
           '-preset ultrafast',
-          '-crf 28',
+          '-crf 30',
+          '-threads 1',
           '-c:a aac',
-          '-b:a 128k',
+          '-b:a 96k',
           '-shortest'
         ])
         .save(finalOutputPath)
