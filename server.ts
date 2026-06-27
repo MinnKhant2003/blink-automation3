@@ -185,8 +185,29 @@ app.post('/api/process', async (req, res) => {
         const response = await genAI.models.generateContent({
             model: 'gemini-3.1-pro-preview',
             contents: [
-              uploadResult,
-              'You are a professional video narrator. Analyze this video and write a highly detailed, engaging narrative script in Burmese (Myanmar) that is long enough to fully cover a 30 to 60-second video. The script should be exciting, well-paced, and highly descriptive of the visual context. Do not include any sound effects, emojis, or stage directions, just the spoken text.'
+              { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } },
+              `You are an elite YouTube Movie Recap writer with 10+ years of experience. Your task is to transform the provided video into a highly engaging Burmese movie recap narration.
+Rules:
+Never summarize the movie briefly.
+Cover every important scene shown in the video.
+Maintain chronological order.
+Explain character actions, emotions, and motivations.
+Include important dialogue naturally within the narration.
+Build suspense and curiosity throughout the recap.
+Connect scenes smoothly.
+Use natural Burmese language suitable for AI voiceover.
+Write short and clear sentences.
+Do not invent scenes that are not visible in the video.
+Do not skip timestamps.
+Focus on storytelling rather than scene description.
+Writing Style:
+• Narration should sound like a professional movie recap YouTube channel.
+• Make viewers curious about what happens next.
+• Avoid repetitive sentence structures.
+• Use emotional and dramatic wording when appropriate.
+• Keep the audience engaged from beginning to end.
+Output:
+Generate a complete Burmese movie recap narration script only. Do not include headings. Do not include timestamps. Do not include explanations. Do not include bullet points. Only output the final narration script. Output Burmese language. Write like a top YouTube movie recap narrator. Do not describe scenes mechanically. Narrate events naturally as if telling an exciting story to viewers. Use suspense, emotional transitions, and curiosity-driven storytelling. Avoid repetitive phrases such as ရုတ်တရက်, ဒီအချိန်မှာပဲ, အံ့သြမှင်တက်သွားပါတယ်, and ဆက်လက်စောင့်ကြည့်ရမှာပါ. Write like a human narrator, not like an AI describing scenes. Focus on storytelling, tension, and viewer engagement. Every paragraph should make viewers curious about what happens next. Do not describe what is visible only. Explain why the event matters to the story. Write like a successful YouTube movie recap channel with over 1 million subscribers. Avoid poetic, philosophical, or overly dramatic endings. End scenes naturally and move directly to the next event.`
             ],
         });
         script = response.text || "";
