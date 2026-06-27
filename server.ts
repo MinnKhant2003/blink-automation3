@@ -44,6 +44,20 @@ app.use('/outputs', (req, res, next) => {
   next();
 }, express.static(OUTPUTS_DIR));
 
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+}, express.static(UPLOADS_DIR));
+
+app.use('/tmp', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+}, express.static(TMP_DIR));
+
 // Voice Config
 const VOICES = {
   'Myint Myat': { voice: 'my-MM-ThihaNeural', pitch: '+10Hz', rate: '+15%' },
@@ -234,30 +248,61 @@ Generate a complete Burmese movie recap narration script only. Do not include he
       rate: config.rate,
       timeout: 120000 // Increase timeout to 120 seconds
     });
-    const audioPath = path.join(TMP_DIR, `voice_${uuidv4()}.mp3`);
+    const audioFilename = `voice_${uuidv4()}.mp3`;
+    const audioPath = path.join(TMP_DIR, audioFilename);
     await tts.ttsPromise(script, audioPath);
     
-    log('[4/4] Smart Trimming & Syncing via FFmpeg...');
+    log('[4/4] Preparing Live Sync Editor...');
+    
+    // Instead of rendering directly, emit sync-ready with the video and audio filenames
+    io.emit('sync-ready', {
+      videoFilename: filename,
+      audioFilename: audioFilename
+    });
+    
+  } catch (error: any) {
+    const errorMsg = error?.message || JSON.stringify(error) || String(error);
+    log(`Error: ${errorMsg}`);
+    console.error('Full process error:', error);
+    io.emit('process-error', { error: errorMsg });
+  }
+});
+
+// Finalize and Render
+app.post('/api/render-final', async (req, res) => {
+  const { videoFilename, audioFilename, videoSpeed, audioSpeed } = req.body;
+  res.json({ message: 'Final render started' });
+  const log = (msg: string) => io.emit('log', msg);
+  
+  try {
+    log('Starting final render with adjusted speeds...');
+    const inputPath = path.join(UPLOADS_DIR, videoFilename);
+    const audioPath = path.join(TMP_DIR, audioFilename);
     const outputFilename = `final_${uuidv4()}.mp4`;
     const finalOutputPath = path.join(OUTPUTS_DIR, outputFilename);
 
     await new Promise((resolve, reject) => {
+      // Calculate pts and atempo string
+      // Note: setpts uses N/FRAME_RATE/TB or simply PTS*(1/videoSpeed)
+      const vSpeedStr = `1/${videoSpeed}`;
+      const aSpeedStr = `${audioSpeed}`;
+      
       ffmpeg()
         .input(inputPath)
         .inputOptions(['-stream_loop', '-1'])
         .input(audioPath)
         .outputOptions([
           '-map 0:v:0', // Explicitly take video from input 0
-          '-map 1:a:0', // Explicitly take audio from input 1 (dropping original audio)
+          '-map 1:a:0', // Explicitly take audio from input 1
           '-c:v libx264',
           '-preset ultrafast',
           '-crf 30',
           '-threads 1',
           '-c:a aac',
           '-b:a 96k',
-          '-shortest', // Trim video to match TTS length if TTS is shorter
-          '-vf mpdecimate,setpts=N/FRAME_RATE/TB,scale=-2:480,fps=24,format=yuv420p', // Smart Trim video
-          '-af silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-30dB,volume=1.5' // Smart Trim audio silences
+          '-shortest', 
+          `-vf mpdecimate,setpts=PTS*${vSpeedStr},scale=-2:480,fps=24,format=yuv420p`, 
+          `-af silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-30dB,volume=1.5,atempo=${aSpeedStr}`
         ])
         .save(finalOutputPath)
         .on('start', (cmdline) => log(`FFmpeg started...`))
@@ -271,7 +316,6 @@ Generate a complete Burmese movie recap narration script only. Do not include he
         });
     });
     
-    // Upload to Catbox.moe for public access (avoids Cloudflare HTML blocks)
     log('Process Complete. Uploading to temporary host for download...');
     
     const form = new FormDataNode();
