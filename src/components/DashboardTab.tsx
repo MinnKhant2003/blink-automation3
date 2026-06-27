@@ -193,7 +193,7 @@ export default function DashboardTab({ logs, groqKey, geminiKey, socket }: Dashb
 
         <div 
           {...getRootProps()} 
-          className={`border-2 border-dashed rounded-3xl p-10 text-center cursor-pointer transition-all
+          className={`border-2 border-dashed rounded-3xl p-6 sm:p-10 text-center cursor-pointer transition-all
             ${isDragActive ? 'border-purple-500 bg-purple-500/10' : 'border-white/20 bg-black/20 hover:bg-white/5 hover:border-white/30'}
             ${isUploading || isProcessing ? 'pointer-events-none opacity-50' : ''}`}
         >

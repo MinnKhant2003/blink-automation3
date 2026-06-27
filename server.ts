@@ -71,6 +71,7 @@ app.post('/api/preview-voice', async (req, res) => {
       voice: config.voice,
       pitch: config.pitch,
       rate: config.rate,
+      timeout: 30000
     });
     
     await tts.ttsPromise(text || 'မင်္ဂလာပါ၊ ဘလင့်အော်တိုမေးရှင်းမှ ကြိုဆိုပါတယ်။', outputPath);
@@ -231,6 +232,7 @@ Generate a complete Burmese movie recap narration script only. Do not include he
       voice: config.voice,
       pitch: config.pitch,
       rate: config.rate,
+      timeout: 120000 // Increase timeout to 120 seconds
     });
     const audioPath = path.join(TMP_DIR, `voice_${uuidv4()}.mp3`);
     await tts.ttsPromise(script, audioPath);
@@ -287,8 +289,10 @@ Generate a complete Burmese movie recap narration script only. Do not include he
     io.emit('process-complete', { status: 'success', outputUrl: typeof externalUrl === 'string' ? externalUrl.trim() : String(externalUrl).trim() });
     
   } catch (error: any) {
-    log(`Error: ${error.message}`);
-    io.emit('process-error', { error: error.message });
+    const errorMsg = error?.message || JSON.stringify(error) || String(error);
+    log(`Error: ${errorMsg}`);
+    console.error('Full process error:', error);
+    io.emit('process-error', { error: errorMsg });
   }
 });
 

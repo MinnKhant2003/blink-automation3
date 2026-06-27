@@ -67,7 +67,7 @@ export default function App() {
         </header>
 
         {/* Navigation */}
-        <nav className="flex space-x-2 mb-8 bg-white/5 p-2 rounded-2xl backdrop-blur-xl border border-white/10 w-fit">
+        <nav className="flex space-x-2 mb-8 bg-white/5 p-2 rounded-2xl backdrop-blur-xl border border-white/10 w-full overflow-x-auto max-w-full md:w-fit whitespace-nowrap scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -94,7 +94,7 @@ export default function App() {
         </nav>
 
         {/* Tab Content */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl shadow-black/50 min-h-[500px]">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-4 sm:p-8 shadow-2xl shadow-black/50 min-h-[500px]">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
