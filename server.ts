@@ -296,7 +296,6 @@ app.post('/api/render-final', async (req, res) => {
       
       ffmpeg()
         .input(inputPath)
-        .inputOptions(['-stream_loop', '-1'])
         .input(audioPath)
         .outputOptions([
           '-map 0:v:0', // Explicitly take video from input 0
@@ -308,8 +307,8 @@ app.post('/api/render-final', async (req, res) => {
           '-c:a aac',
           '-b:a 96k',
           '-shortest', 
-          `-vf mpdecimate,setpts=PTS*${vSpeedStr},scale=-2:480,fps=24,format=yuv420p`, 
-          `-af silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-30dB,volume=1.5,atempo=${aSpeedStr}`
+          `-vf setpts=PTS*${vSpeedStr},scale=-2:480,fps=24,format=yuv420p`, 
+          `-af volume=1.5,atempo=${aSpeedStr}`
         ])
         .save(finalOutputPath)
         .on('start', (cmdline) => log(`FFmpeg started...`))

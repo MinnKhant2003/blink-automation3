@@ -6,3 +6,11 @@ coverage/
 *.log
 .env*
 !.env.example
+uploads/
+outputs/
+tmp/
+*.mp4
+*.mov
+*.webm
+*.mp3
+*.wav
