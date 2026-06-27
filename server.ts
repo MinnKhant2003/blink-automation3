@@ -193,8 +193,6 @@ app.post('/api/process', async (req, res) => {
       log('Could not determine video duration. Defaulting to 30s.');
       videoDuration = 30;
     }
-    const max_words = Math.floor(videoDuration * 2.5);
-    
     let script = "";
     
     if (geminiKey) {
@@ -220,16 +218,19 @@ app.post('/api/process', async (req, res) => {
             contents: [
               { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } },
               `You are an elite YouTube Movie Recap writer with 10+ years of experience. Your task is to transform the provided video into a highly engaging Burmese movie recap narration.
-CRITICAL TIME LIMIT: The target video is exactly ${videoDuration.toFixed(2)} seconds long. Your ENTIRE script MUST be STRICTLY UNDER ${max_words} words. Count your words. Do not exceed this limit.
 Rules:
-Cover every important scene shown in the video in chronological order.
-If characters are present, explain their emotions and motivations. Include important dialogue naturally. If no characters are present, build suspense and tension around the visible events.
-Build suspense and curiosity throughout the recap. Connect scenes smoothly.
-Use natural Burmese language suitable for AI voiceover. Write short and clear sentences.
+Never summarize the movie briefly.
+Cover every important scene shown in the video.
+Maintain chronological order.
+Explain character actions, emotions, and motivations.
+Include important dialogue naturally within the narration.
+Build suspense and curiosity throughout the recap.
+Connect scenes smoothly.
+Use natural Burmese language suitable for AI voiceover.
+Write short and clear sentences.
 Do not invent scenes that are not visible in the video.
-Avoid repetitive phrases such as ရုတ်တရက်, ဒီအချိန်မှာပဲ, အံ့သြမှင်တက်သွားပါတယ်, and ဆက်လက်စောင့်ကြည့်ရမှာပါ.
-Write like a human narrator, not like an AI describing scenes. Make viewers curious about what happens next.
-Output: Generate a complete Burmese narration script ONLY. Do not include headings, timestamps, explanations, or bullet points. Output strictly in Burmese language. End scenes naturally before reaching the ${max_words} limit.`
+Do not skip timestamps.
+Focus on storytelling rather than scene description. Writing Style: • Narration should sound like a professional movie recap YouTube channel. • Make viewers curious about what happens next. • Avoid repetitive sentence structures. • Use emotional and dramatic wording when appropriate. • Keep the audience engaged from beginning to end. Output: Generate a complete Burmese movie recap narration script only. Do not include headings. Do not include timestamps. Do not include explanations. Do not include bullet points. Only output the final narration script. Output Burmese language. Write like a top YouTube movie recap narrator. Do not describe scenes mechanically. Narrate events naturally as if telling an exciting story to viewers. Use suspense, emotional transitions, and curiosity-driven storytelling. Avoid repetitive phrases such as ရုတ်တရက်, ဒီအချိန်မှာပဲ, အံ့သြမှင်တက်သွားပါတယ်, and ဆက်လက်စောင့်ကြည့်ရမှာပါ. Write like a human narrator, not like an AI describing scenes. Focus on storytelling, tension, and viewer engagement. Every paragraph should make viewers curious about what happens next. Do not describe what is visible only. Explain why the event matters to the story. Write like a successful YouTube movie recap channel with over 1 million subscribers. Avoid poetic, philosophical, or overly dramatic endings. End scenes naturally and move directly to the next event.`
             ],
         });
         script = response.text || "";
