@@ -159,35 +159,42 @@ app.post('/api/process', async (req, res) => {
     log('[1/4] Running AI Transcription...');
     await new Promise(r => setTimeout(r, 2000));
     
-    // Generate Script with Groq or Gemini
-    log('[2/4] Generating Script with Groq and Gemini Vision...');
+    // Generate Script with Gemini Vision
+    log('[2/4] Generating Script with Gemini Vision...');
+    const inputPath = path.join(UPLOADS_DIR, filename);
     let script = "";
-    if (groqKey) {
-      try {
-        const groq = new Groq({ apiKey: groqKey });
-        const chatCompletion = await groq.chat.completions.create({
-          messages: [{
-            role: 'user', 
-            content: 'You are a professional video narrator. Write a detailed, engaging narrative script in Burmese (Myanmar) that is long enough to fully cover a 30 to 60-second video. The script should be exciting, well-paced, and highly descriptive. Do not include any sound effects, emojis, or stage directions, just the spoken text.'
-          }],
-          model: 'llama3-8b-8192',
-        });
-        script = chatCompletion.choices[0]?.message?.content || "";
-      } catch (e: any) {
-        log(`Groq generation failed: ${e.message}`);
-      }
-    }
     
-    if (!script && geminiKey) {
+    if (geminiKey) {
       try {
         const genAI = new GoogleGenAI({ apiKey: geminiKey });
+        log('Uploading video for analysis...');
+        const uploadResult = await genAI.files.upload({ file: inputPath, config: { mimeType: 'video/mp4' } });
+        
+        log('Waiting for video processing in Gemini...');
+        let fileInfo = await genAI.files.get({ name: uploadResult.name });
+        while (fileInfo.state === 'PROCESSING') {
+          await new Promise(r => setTimeout(r, 2000));
+          fileInfo = await genAI.files.get({ name: uploadResult.name });
+        }
+        
+        if (fileInfo.state === 'FAILED') {
+          throw new Error('Video processing failed in Gemini.');
+        }
+
+        log('Generating detailed script...');
         const response = await genAI.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: 'You are a professional video narrator. Write a detailed, engaging narrative script in Burmese (Myanmar) that is long enough to fully cover a 30 to 60-second video. The script should be exciting, well-paced, and highly descriptive. Do not include any sound effects, emojis, or stage directions, just the spoken text.',
+            model: 'gemini-3.1-pro-preview',
+            contents: [
+              uploadResult,
+              'You are a professional video narrator. Analyze this video and write a highly detailed, engaging narrative script in Burmese (Myanmar) that is long enough to fully cover a 30 to 60-second video. The script should be exciting, well-paced, and highly descriptive of the visual context. Do not include any sound effects, emojis, or stage directions, just the spoken text.'
+            ],
         });
         script = response.text || "";
+        
+        // Cleanup
+        await genAI.files.delete({ name: uploadResult.name }).catch(() => {});
       } catch (e: any) {
-        log(`Gemini generation failed: ${e.message}`);
+        log(`Gemini Vision generation failed: ${e.message}`);
       }
     }
 
@@ -208,7 +215,6 @@ app.post('/api/process', async (req, res) => {
     await tts.ttsPromise(script, audioPath);
     
     log('[4/4] Smart Trimming & Syncing via FFmpeg...');
-    const inputPath = path.join(UPLOADS_DIR, filename);
     const outputFilename = `final_${uuidv4()}.mp4`;
     const finalOutputPath = path.join(OUTPUTS_DIR, outputFilename);
 
@@ -216,22 +222,18 @@ app.post('/api/process', async (req, res) => {
       ffmpeg()
         .input(inputPath)
         .input(audioPath)
-        .complexFilter([
-          // Remove silence from video (Smart Trim representation via framerate/speed adjustments or simply mapping)
-          // We completely drop the original audio [0:a] and only use the generated voiceover [1:a]
-          '[1:a]volume=1.5[audio_out]',
-          '[0:v]scale=-2:480,fps=24,format=yuv420p[video_out]'
-        ])
         .outputOptions([
-          '-map [video_out]',
-          '-map [audio_out]',
+          '-map 0:v:0', // Explicitly take video from input 0
+          '-map 1:a:0', // Explicitly take audio from input 1 (dropping original audio)
           '-c:v libx264',
           '-preset ultrafast',
           '-crf 30',
           '-threads 1',
           '-c:a aac',
           '-b:a 96k',
-          '-shortest'
+          '-shortest', // Trim video to match TTS length if TTS is shorter
+          '-vf mpdecimate,setpts=N/FRAME_RATE/TB,scale=-2:480,fps=24,format=yuv420p', // Smart Trim video
+          '-af silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-30dB,volume=1.5' // Smart Trim audio silences
         ])
         .save(finalOutputPath)
         .on('start', (cmdline) => log(`FFmpeg started...`))
