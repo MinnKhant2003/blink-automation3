@@ -183,7 +183,7 @@ app.post('/api/process', async (req, res) => {
 
         log('Generating detailed script...');
         const response = await genAI.models.generateContent({
-            model: 'gemini-3.1-pro-preview',
+            model: 'gemini-1.5-flash',
             contents: [
               { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } },
               `You are an elite YouTube Movie Recap writer with 10+ years of experience. Your task is to transform the provided video into a highly engaging Burmese movie recap narration.
