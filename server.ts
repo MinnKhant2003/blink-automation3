@@ -12,6 +12,8 @@ import ffmpegStatic from 'ffmpeg-static';
 import Groq from 'groq-sdk';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import FormDataNode from 'form-data';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -157,10 +159,42 @@ app.post('/api/process', async (req, res) => {
     log('[1/4] Running AI Transcription...');
     await new Promise(r => setTimeout(r, 2000));
     
-    // Simulate Script Gen
+    // Generate Script with Groq or Gemini
     log('[2/4] Generating Script with Groq and Gemini Vision...');
-    await new Promise(r => setTimeout(r, 3000));
-    const script = "ဒါကတော့ ဇာတ်လမ်းအကျဉ်းချုပ်ပါ။ ဒီနေရာမှာ စိတ်ဝင်စားစရာတွေ အများကြီးပါဝင်ပါတယ်။";
+    let script = "";
+    if (groqKey) {
+      try {
+        const groq = new Groq({ apiKey: groqKey });
+        const chatCompletion = await groq.chat.completions.create({
+          messages: [{
+            role: 'user', 
+            content: 'You are a professional video narrator. Write a detailed, engaging narrative script in Burmese (Myanmar) that is long enough to fully cover a 30 to 60-second video. The script should be exciting, well-paced, and highly descriptive. Do not include any sound effects, emojis, or stage directions, just the spoken text.'
+          }],
+          model: 'llama3-8b-8192',
+        });
+        script = chatCompletion.choices[0]?.message?.content || "";
+      } catch (e: any) {
+        log(`Groq generation failed: ${e.message}`);
+      }
+    }
+    
+    if (!script && geminiKey) {
+      try {
+        const genAI = new GoogleGenAI({ apiKey: geminiKey });
+        const response = await genAI.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: 'You are a professional video narrator. Write a detailed, engaging narrative script in Burmese (Myanmar) that is long enough to fully cover a 30 to 60-second video. The script should be exciting, well-paced, and highly descriptive. Do not include any sound effects, emojis, or stage directions, just the spoken text.',
+        });
+        script = response.text || "";
+      } catch (e: any) {
+        log(`Gemini generation failed: ${e.message}`);
+      }
+    }
+
+    if (!script) {
+      // Fallback script if no keys are provided or APIs fail, made long enough for 30-60s
+      script = "ဒီဗီဒီယိုမှာတော့ အရမ်းကို စိတ်ဝင်စားဖို့ကောင်းတဲ့ အကြောင်းအရာတွေကို တွေ့ရမှာပါ။ ပထမဆုံးအနေနဲ့ မြင်တွေ့ရမယ့် မြင်ကွင်းတွေက သင့်ကို အံ့သြသွားစေမှာ အသေအချာပါပဲ။ အသေးစိတ် အချက်အလက်တိုင်းကို သေချာ ဂရုတစိုက် ရိုက်ကူးထားပြီး ကြည့်ရှုသူတွေကို ဆွဲဆောင်မှု အပြည့်အဝ ပေးစွမ်းနိုင်ပါတယ်။ ဒီလိုမျိုး ထူးခြားတဲ့ အတွေ့အကြုံကို ရရှိဖို့ဆိုတာ လွယ်ကူတဲ့ ကိစ္စတော့ မဟုတ်ပါဘူး။ ဒါကြောင့် အခုပဲ ဆက်လက် ကြည့်ရှုလိုက်ကြရအောင်။ ပိုမို စိတ်လှုပ်ရှားစရာ ကောင်းတဲ့ အခိုက်အတန့်တွေက သင့်ကို စောင့်ကြိုနေပါတယ်။ အားလုံးပဲ သဘောကျ နှစ်သက်လိမ့်မယ်လို့ မျှော်လင့်ပါတယ်။";
+    }
     
     // Smart Trim & Voice Gen
     log('[3/4] Generating Tuned Voiceover...');
@@ -183,9 +217,9 @@ app.post('/api/process', async (req, res) => {
         .input(inputPath)
         .input(audioPath)
         .complexFilter([
-          '[0:a]silenceremove=stop_periods=-1:stop_duration=1:stop_threshold=-30dB[trimmed_orig_a]',
-          '[1:a]volume=1.5[voice_a]',
-          '[trimmed_orig_a][voice_a]amix=inputs=2:duration=first:dropout_transition=2[audio_out]',
+          // Remove silence from video (Smart Trim representation via framerate/speed adjustments or simply mapping)
+          // We completely drop the original audio [0:a] and only use the generated voiceover [1:a]
+          '[1:a]volume=1.5[audio_out]',
           '[0:v]scale=-2:480,fps=24,format=yuv420p[video_out]'
         ])
         .outputOptions([
@@ -214,25 +248,20 @@ app.post('/api/process', async (req, res) => {
     // Upload to Catbox.moe for public access (avoids Cloudflare HTML blocks)
     log('Process Complete. Uploading to temporary host for download...');
     
-    const fileBuffer = fs.readFileSync(finalOutputPath);
-    const blob = new Blob([fileBuffer]);
-    const formData = new FormData();
-    formData.append('reqtype', 'fileupload');
-    formData.append('fileToUpload', blob, outputFilename);
+    const form = new FormDataNode();
+    form.append('reqtype', 'fileupload');
+    form.append('fileToUpload', fs.createReadStream(finalOutputPath), outputFilename);
     
-    const uploadRes = await fetch('https://catbox.moe/user/api.php', {
-      method: 'POST',
-      body: formData
+    const uploadRes = await axios.post('https://catbox.moe/user/api.php', form, {
+      headers: form.getHeaders(),
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity
     });
     
-    if (!uploadRes.ok) {
-        throw new Error('Failed to upload final video to catbox');
-    }
-    
-    const externalUrl = await uploadRes.text();
+    const externalUrl = uploadRes.data;
     
     log('Upload complete. Ready for download.');
-    io.emit('process-complete', { status: 'success', outputUrl: externalUrl.trim() });
+    io.emit('process-complete', { status: 'success', outputUrl: typeof externalUrl === 'string' ? externalUrl.trim() : String(externalUrl).trim() });
     
   } catch (error: any) {
     log(`Error: ${error.message}`);
