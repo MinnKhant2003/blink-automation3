@@ -1,0 +1,6 @@
+{
+  "name": "Blink Automation",
+  "description": "Movie Recap Automation System",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
