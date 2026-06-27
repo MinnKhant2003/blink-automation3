@@ -55,7 +55,7 @@ export default function App() {
         <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 blur-[120px] rounded-full" />
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-12 relative z-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-12 relative z-10">
         {/* Header */}
         <header className="mb-12 flex items-center justify-between">
           <div>

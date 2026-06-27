@@ -295,7 +295,7 @@ export default function DashboardTab({ logs, groqKey, geminiKey, socket }: Dashb
       </div>
 
       {/* Right Column: Terminal */}
-      <div className="flex flex-col bg-black/60 border border-white/10 rounded-3xl overflow-hidden h-full min-h-[400px] shadow-inner">
+      <div className="flex flex-col bg-black/60 border border-white/10 rounded-3xl overflow-hidden h-full min-h-[300px] sm:min-h-[400px] shadow-inner">
         <div className="bg-white/5 px-4 py-3 border-b border-white/10 flex items-center space-x-2">
           <Terminal size={16} className="text-gray-400" />
           <span className="text-sm font-medium text-gray-400 font-mono tracking-wider">SYSTEM LOGS</span>
@@ -308,9 +308,9 @@ export default function DashboardTab({ logs, groqKey, geminiKey, socket }: Dashb
             <div className="text-gray-600 italic">Waiting for process to start...</div>
           ) : (
             logs.map((log, i) => (
-              <div key={i} className="flex">
-                <span className="text-gray-600 mr-3">[{new Date().toLocaleTimeString()}]</span>
-                <span className={`${log.includes('Error') ? 'text-red-400' : log.includes('Complete') ? 'text-green-400' : 'text-blue-200'}`}>
+              <div key={i} className="flex flex-col sm:flex-row sm:items-start space-y-1 sm:space-y-0 sm:space-x-3 mb-2">
+                <span className="text-gray-600 whitespace-nowrap shrink-0">[{new Date().toLocaleTimeString()}]</span>
+                <span className={`break-words ${log.includes('Error') ? 'text-red-400' : log.includes('Complete') ? 'text-green-400' : 'text-blue-200'}`}>
                   {log}
                 </span>
               </div>

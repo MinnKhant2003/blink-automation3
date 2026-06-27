@@ -244,6 +244,7 @@ Generate a complete Burmese movie recap narration script only. Do not include he
     await new Promise((resolve, reject) => {
       ffmpeg()
         .input(inputPath)
+        .inputOptions(['-stream_loop', '-1'])
         .input(audioPath)
         .outputOptions([
           '-map 0:v:0', // Explicitly take video from input 0
