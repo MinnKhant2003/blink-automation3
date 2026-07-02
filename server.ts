@@ -324,10 +324,10 @@ Output ONLY valid JSON without any markdown formatting blocks. Do not include he
         const jsonText = response.text || "{}";
         try {
           const generatedData = JSON.parse(jsonText);
-          const generatedScenes = generatedData.scenes || [];
+          const generatedScenes = generatedData?.scenes || [];
           scenes = sceneDurations.map((sd: any) => {
             const gScene = generatedScenes.find((g: any) => g.scene === sd.scene);
-            return { ...sd, narration_text: gScene ? gScene.narration_text : "ဒီအပိုင်းမှာတော့ ဆက်လက်ပြီး ကြည့်ရှုရမှာဖြစ်ပါတယ်။" };
+            return { ...sd, narration_text: gScene?.narration_text || "ဒီအပိုင်းမှာတော့ ဆက်လက်ပြီး ကြည့်ရှုရမှာဖြစ်ပါတယ်။" };
           });
           
           if (scenes.length > 0) {
