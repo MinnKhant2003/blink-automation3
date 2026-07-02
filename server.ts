@@ -263,9 +263,39 @@ app.post('/api/process', async (req, res) => {
         }
         if (fileInfo.state === 'FAILED') throw new Error('Video processing failed in Gemini.');
 
-        const prompt = `Act as a strict Video Transcript Extractor, Professional Burmese Translator, precise video editor, and TikTok Content Optimizer for the 'blinkrecap' TikTok channel.
-Analyze the provided video and the following scene durations.
-Write a Burmese narration strictly tailored to each scene's duration.
+        const prompt = `You are an elite YouTube Movie Recap writer with 10+ years of experience.
+Your task is to transform the provided video into a highly engaging Burmese movie recap narration.
+
+Rules:
+1. Never summarize the movie briefly.
+2. Cover every important scene shown in the video.
+3. Maintain chronological order.
+4. Explain character actions, emotions, and motivations.
+5. Include important dialogue naturally within the narration.
+6. Build suspense and curiosity throughout the recap.
+7. Connect scenes smoothly.
+8. Use natural Burmese language suitable for AI voiceover.
+9. Write short and clear sentences.
+10. Do not invent scenes that are not visible in the video.
+11. Do not skip timestamps.
+12. Focus on storytelling rather than scene description.
+
+Writing Style:
+• Narration should sound like a professional movie recap YouTube channel.
+• Make viewers curious about what happens next.
+• Avoid repetitive sentence structures.
+• Use emotional and dramatic wording when appropriate.
+• Keep the audience engaged from beginning to end.
+• Write like a top YouTube movie recap narrator. Do not describe scenes mechanically. Narrate events naturally as if telling an exciting story to viewers. Use suspense, emotional transitions, and curiosity-driven storytelling.
+• Avoid repetitive phrases such as "ရုတ်တရက်", "ဒီအချိန်မှာပဲ", "အံ့သြမှင်တက်သွားပါတယ်", and "ဆက်လက်စောင့်ကြည့်ရမှာပါ".
+• Write like a human narrator, not like an AI describing scenes.
+• Focus on storytelling, tension, and viewer engagement.
+• Every paragraph should make viewers curious about what happens next.
+• Do not describe what is visible only. Explain why the event matters to the story.
+• Write like a successful YouTube movie recap channel with over 1 million subscribers.
+• Avoid poetic, philosophical, or overly dramatic endings. End scenes naturally and move directly to the next event.
+
+CRITICAL: To maintain perfect audio-video synchronization, you MUST output your narration tailored to the exact durations of the detected scenes below. 
 Here are the detected scenes:
 ${JSON.stringify(sceneDurations, null, 2)}
 
@@ -277,21 +307,10 @@ You must output a strict JSON object exactly matching this schema:
       "duration": 4.5,
       "narration_text": "your burmese narration here"
     }
-  ],
-  "tiktok_details": {
-    "original_transcript": "Extract the exact spoken words (English). DO NOT summarize. Append: 'Follow for more movie recaps.'",
-    "outro_script": "1-2s CTA like 'Follow for more!' or 'Next part မလွတ်ချင်ရင် Follow လုပ်ထားပေးပါ။'",
-    "cover_text": "SHORT, high-curiosity Burmese hook (max 6 words)",
-    "caption": "Viral Reddit-style hook + emojis. Ends with: 'Movie Recap အတွက် Follow လုပ်ထားပါ။'",
-    "hashtags": "#blinkrecap #movierecap #recapmovies #fyp #viral #movieclips"
-  }
+  ]
 }
 
-CRITICAL RULES:
-- Output ONLY valid JSON without any markdown formatting blocks.
-- DO NOT create a new story.
-- Maintain chronological order and match the provided scenes.
-- Use natural Burmese language for narration_text.`;
+Output ONLY valid JSON without any markdown formatting blocks. Do not include headings, timestamps, explanations, or bullet points in the narration text.`;
 
         const response = await genAI.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -311,21 +330,8 @@ CRITICAL RULES:
             return { ...sd, narration_text: gScene ? gScene.narration_text : "ဒီအပိုင်းမှာတော့ ဆက်လက်ပြီး ကြည့်ရှုရမှာဖြစ်ပါတယ်။" };
           });
           
-          if (generatedData.tiktok_details) {
-            fullScript = `1. Original Transcript (English)
-${generatedData.tiktok_details.original_transcript}
-
-2. Outro Script (Only CTA)
-${generatedData.tiktok_details.outro_script}
-
-3. Cover Text
-${generatedData.tiktok_details.cover_text}
-
-4. Caption
-${generatedData.tiktok_details.caption}
-
-5. Hashtags
-${generatedData.tiktok_details.hashtags}`;
+          if (scenes.length > 0) {
+            fullScript = scenes.map(s => `Scene ${s.scene} (${s.duration}s): ${s.narration_text}`).join('\n\n');
           }
         } catch (e) {
           log("Failed to parse JSON from Gemini. Proceeding with fallback.");

@@ -16,7 +16,7 @@ interface DashboardTabProps {
   setSelectedVoice: (val: string) => void;
 }
 
-const CHUNK_SIZE = 256 * 1024; // 256KB
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
 
 const ProgressSteps = ({ stage }: { stage: number }) => {
   const steps = ["UPLOAD", "ANALYZE", "GENERATE", "VOICE", "DONE"];
@@ -563,7 +563,7 @@ export default function DashboardTab({ logs, groqKey, geminiKey, socket, selecte
               {syncData.fullScript && (
                 <div className="bg-[#0f0f0f] p-4 rounded-xl shadow-recessed border border-[rgba(255,255,255,0.07)]">
                   <div className="mb-4 flex items-center justify-between font-mono text-[11px] uppercase">
-                    <span className="font-bold text-[#ffffff] drop-shadow-[0_1px_0_#000000]">Generated TikTok Post Details</span>
+                    <span className="font-bold text-[#ffffff] drop-shadow-[0_1px_0_#000000]">Generated Movie Recap Script</span>
                   </div>
                   <textarea 
                     readOnly 
@@ -604,7 +604,7 @@ export default function DashboardTab({ logs, groqKey, geminiKey, socket, selecte
 
             {syncData?.fullScript && (
               <div className="mt-6 bg-[#0a0a0a] p-4 rounded-xl border border-white/5 shadow-recessed">
-                <h4 className="font-mono text-[11px] uppercase tracking-widest text-[#a0a0a0] mb-3 font-bold">TikTok Script & Details</h4>
+                <h4 className="font-mono text-[11px] uppercase tracking-widest text-[#a0a0a0] mb-3 font-bold">Movie Recap Script</h4>
                 <textarea 
                   readOnly 
                   value={syncData.fullScript} 
