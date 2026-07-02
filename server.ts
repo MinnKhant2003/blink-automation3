@@ -263,63 +263,73 @@ app.post('/api/process', async (req, res) => {
         }
         if (fileInfo.state === 'FAILED') throw new Error('Video processing failed in Gemini.');
 
-        const prompt = `Act as a strict Video Transcript Extractor, Professional Burmese Translator, and TikTok Content Optimizer for the 'blinkrecap' TikTok channel.
-Analyze the provided video/audio input. You must follow these strict rules and output ONLY the following 4 sections in the exact format shown. Do not add any introductory or concluding conversational text.
+        const prompt = `Act as a strict Video Transcript Extractor, Professional Burmese Translator, precise video editor, and TikTok Content Optimizer for the 'blinkrecap' TikTok channel.
+Analyze the provided video and the following scene durations.
+Write a Burmese narration strictly tailored to each scene's duration.
+Here are the detected scenes:
+${JSON.stringify(sceneDurations, null, 2)}
 
-1. Original Transcript (English)
-Extract the exact spoken words from the video.
-DO NOT rewrite, DO NOT summarize, and DO NOT change any words.
-At the very end of the text, append exactly: 'Follow for more movie recaps.'
-
-2. Myanmar Translation
-Translate the above transcript into natural, easy-to-understand Burmese.
-Keep the exact same meaning as the original. DO NOT change the story or content.
-At the very end of the translated text, append exactly: 'Movie Recap အတွက် Follow လုပ်ထားပါ။'
-
-3. Outro Script (Only CTA)
-Create a very short 1-2 seconds CTA for a Burmese voiceover.
-Output ONLY ONE of these variations (or similar): 'Follow for more!', 'Next part မလွတ်ချင်ရင် Follow လုပ်ထားပေးပါ။', or 'Daily movie recap ကြည့်ချင်ရင် Follow လုပ်ထားပါ။'
-
-4. TikTok Post Details
-Output the following details in plain text format only. DO NOT use a table.
-Cover Text: Create a SHORT, high-curiosity Burmese hook (max 6 words). Make it emotional, shocking, or mystery style.
-Caption: Write a viral Reddit-style hook (curiosity + emotion). Use simple Burmese + 1-2 emojis (e.g., 🎬🔥). Keep it short (1-2 lines). Must end with: 'Movie Recap အတွက် Follow လုပ်ထားပါ။'
-Hashtags: Output exactly 6 hashtags. The first MUST be #blinkrecap. Add 2 Movie Recap hashtags, 2 Viral/Trending hashtags, and 1 Niche hashtag. Format like: #blinkrecap #movierecap #recapmovies #fyp #viral #movieclips
+You must output a strict JSON object exactly matching this schema:
+{
+  "scenes": [
+    {
+      "scene": 1,
+      "duration": 4.5,
+      "narration_text": "your burmese narration here"
+    }
+  ],
+  "tiktok_details": {
+    "original_transcript": "Extract the exact spoken words (English). DO NOT summarize. Append: 'Follow for more movie recaps.'",
+    "outro_script": "1-2s CTA like 'Follow for more!' or 'Next part မလွတ်ချင်ရင် Follow လုပ်ထားပေးပါ။'",
+    "cover_text": "SHORT, high-curiosity Burmese hook (max 6 words)",
+    "caption": "Viral Reddit-style hook + emojis. Ends with: 'Movie Recap အတွက် Follow လုပ်ထားပါ။'",
+    "hashtags": "#blinkrecap #movierecap #recapmovies #fyp #viral #movieclips"
+  }
+}
 
 CRITICAL RULES:
-DO NOT create a new story.
-DO NOT summarize the original content.
-Output must be perfectly formatted and ready to copy-paste.`;
+- Output ONLY valid JSON without any markdown formatting blocks.
+- DO NOT create a new story.
+- Maintain chronological order and match the provided scenes.
+- Use natural Burmese language for narration_text.`;
 
         const response = await genAI.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: [
               { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } },
               prompt
-            ]
+            ],
+            config: { responseMimeType: "application/json" }
         });
         
-        fullScript = response.text || "";
-        let ttsText = "";
+        const jsonText = response.text || "{}";
         try {
-          const match2 = fullScript.match(/2\.\s*Myanmar Translation\n([\s\S]*?)\n3\./i);
-          const match3 = fullScript.match(/3\.\s*Outro Script[^\n]*\n([\s\S]*?)(?:\n4\.|(?:$))/i);
-          if (match2) ttsText += match2[1].trim() + " ";
-          if (match3) ttsText += match3[1].trim();
+          const generatedData = JSON.parse(jsonText);
+          const generatedScenes = generatedData.scenes || [];
+          scenes = sceneDurations.map((sd: any) => {
+            const gScene = generatedScenes.find((g: any) => g.scene === sd.scene);
+            return { ...sd, narration_text: gScene ? gScene.narration_text : "ဒီအပိုင်းမှာတော့ ဆက်လက်ပြီး ကြည့်ရှုရမှာဖြစ်ပါတယ်။" };
+          });
+          
+          if (generatedData.tiktok_details) {
+            fullScript = `1. Original Transcript (English)
+${generatedData.tiktok_details.original_transcript}
+
+2. Outro Script (Only CTA)
+${generatedData.tiktok_details.outro_script}
+
+3. Cover Text
+${generatedData.tiktok_details.cover_text}
+
+4. Caption
+${generatedData.tiktok_details.caption}
+
+5. Hashtags
+${generatedData.tiktok_details.hashtags}`;
+          }
         } catch (e) {
-          log("Failed to parse specific sections from Gemini. Using fallback TTS text.");
+          log("Failed to parse JSON from Gemini. Proceeding with fallback.");
         }
-        if (!ttsText) ttsText = fullScript; // fallback
-        
-        // Since we now have one continuous translation, we treat the video as a single scene 
-        // to properly sync the audio length to the full video length.
-        scenes = [{
-          scene: 1,
-          start: 0,
-          end: videoDuration,
-          duration: videoDuration,
-          narration_text: ttsText
-        }];
         
         await genAI.files.delete({ name: uploadResult.name }).catch(() => {});
       } catch (e: any) {
@@ -328,13 +338,10 @@ Output must be perfectly formatted and ready to copy-paste.`;
     }
 
     if (!scenes || scenes.length === 0) {
-      scenes = [{
-        scene: 1,
-        start: 0,
-        end: videoDuration,
-        duration: videoDuration,
+      scenes = sceneDurations.map((sd: any) => ({
+        ...sd,
         narration_text: "ဒီဗီဒီယိုမှာတော့ အရမ်းကို စိတ်ဝင်စားဖို့ကောင်းတဲ့ အကြောင်းအရာတွေကို တွေ့ရမှာပါ။ ဆက်လက် ကြည့်ရှုလိုက်ကြရအောင်။"
-      }];
+      }));
     }
     
     // Step 3: Text-to-Speech (node-edge-tts)
