@@ -1,4 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+Myanmar:wght@400;600;700;800&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Noto Sans Myanmar", "Myanmar Text", "Pyidaungsu", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
 
 html, body {
   overflow-x: hidden;
@@ -16,4 +22,83 @@ html, body {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.bg-noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.2;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* Shadow Utilities */
+.shadow-card-lift {
+  box-shadow: 6px 6px 14px #000000, -6px -6px 14px #2a2a2a, inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.shadow-floating {
+  box-shadow: 10px 10px 20px #000000, -10px -10px 20px #2c2c2c, inset 0 1px 0 rgba(255,255,255,0.07);
+}
+.shadow-pressed {
+  box-shadow: inset 4px 4px 10px #000000, inset -4px -4px 10px #282828;
+}
+.shadow-recessed {
+  box-shadow: inset 3px 3px 8px #000000, inset -3px -3px 8px #252525;
+}
+.shadow-led-glow {
+  box-shadow: 0 0 10px 2px rgba(245, 196, 0, 0.6);
+}
+.shadow-tab-active {
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.5), -1px -1px 4px rgba(255, 220, 50, 0.2);
+}
+.shadow-play {
+  box-shadow: 3px 3px 8px rgba(150, 120, 0, 0.5), -2px -2px 4px rgba(255, 220, 50, 0.2);
+}
+
+.screw {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-image: radial-gradient(circle at center, #000000 2px, transparent 3px);
+  opacity: 0.4;
+}
+.screw-tl { top: 12px; left: 12px; }
+.screw-tr { top: 12px; right: 12px; }
+.screw-bl { bottom: 12px; left: 12px; }
+.screw-br { bottom: 12px; right: 12px; }
+
+.vent-container {
+  position: absolute;
+  top: 12px;
+  right: 28px;
+  display: flex;
+  gap: 4px;
+  opacity: 0.4;
+}
+.vent-slot {
+  width: 1px;
+  height: 20px;
+  background-color: #0f0f0f;
+  border-radius: 999px;
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.industrial-card {
+  background-color: #131313;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 6px 6px 14px #000000, -6px -6px 14px #2a2a2a, inset 0 1px 0 rgba(255,255,255,0.05);
+  padding: 24px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+.industrial-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 10px 10px 20px #000000, -10px -10px 20px #2c2c2c, inset 0 1px 0 rgba(255,255,255,0.07);
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+.animate-blink {
+  animation: blink 1s step-end infinite;
 }
