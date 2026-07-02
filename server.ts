@@ -113,7 +113,7 @@ app.post('/api/preview-voice', async (req, res) => {
 });
 
 // Chunked Upload via express.raw
-app.post('/api/upload-chunk', express.raw({ limit: '10mb', type: '*/*' }), (req, res) => {
+app.post('/api/upload-chunk', express.raw({ limit: '50mb', type: '*/*' }), (req, res) => {
   const { uploadId, chunkIndex } = req.query;
   const fileData = req.body;
 
@@ -321,7 +321,8 @@ Output ONLY valid JSON without any markdown formatting blocks. Do not include he
             config: { responseMimeType: "application/json" }
         });
         
-        const jsonText = response.text || "{}";
+        let jsonText = response.text || "{}";
+        jsonText = jsonText.replace(/```json/gi, '').replace(/```/g, '').trim();
         try {
           const generatedData = JSON.parse(jsonText);
           const generatedScenes = generatedData?.scenes || [];
@@ -333,8 +334,9 @@ Output ONLY valid JSON without any markdown formatting blocks. Do not include he
           if (scenes.length > 0) {
             fullScript = scenes.map(s => `Scene ${s.scene} (${s.duration}s): ${s.narration_text}`).join('\n\n');
           }
-        } catch (e) {
-          log("Failed to parse JSON from Gemini. Proceeding with fallback.");
+        } catch (e: any) {
+          log(`Failed to parse JSON from Gemini: ${e.message}`);
+          console.error("Raw Gemini output:", response.text);
         }
         
         await genAI.files.delete({ name: uploadResult.name }).catch(() => {});
@@ -365,7 +367,9 @@ Output ONLY valid JSON without any markdown formatting blocks. Do not include he
         rate: config.rate,
         timeout: 120000
       });
-      await tts.ttsPromise(scene.narration_text, audioPath);
+      
+      const textForTts = String(scene.narration_text || "ဒီအပိုင်းမှာတော့ ဆက်လက်ပြီး ကြည့်ရှုရမှာဖြစ်ပါတယ်။");
+      await tts.ttsPromise(textForTts, audioPath);
       
       // Step 3.5: Audio Measurement
       log(`Measuring actual audio duration for scene ${scene.scene}...`);

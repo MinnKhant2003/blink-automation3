@@ -16,7 +16,7 @@ interface DashboardTabProps {
   setSelectedVoice: (val: string) => void;
 }
 
-const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB
 
 const ProgressSteps = ({ stage }: { stage: number }) => {
   const steps = ["UPLOAD", "ANALYZE", "GENERATE", "VOICE", "DONE"];
